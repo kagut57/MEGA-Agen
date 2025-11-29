@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="./img/readme-icon.png" alt="Discord OAuth" width="512">
+  <img src="./img/readme-icon.png" alt="mega.nz" width="512">
   <br>
   MEGA.nz Account Creator
 </h1>
@@ -18,7 +18,7 @@
   <a href="#license">License</a>
 </p>
 <div align="center">
-  <img src="./img/demo.png" alt="Discord OAuth Demo" width="800px" style="border-radius:7px;">
+  <img src="./img/demo.png" alt="mega.nz Account Demo" width="800px" style="border-radius:7px;">
 </div>
 
 <br>
