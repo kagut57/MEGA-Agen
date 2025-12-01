@@ -78,7 +78,6 @@ def get_encrypted_link(link_name):
 
 
 def get_all_encrypted_links():
-    """Retrieve all MEGA links from the encrypted file."""
     if not ENCRYPTION_AVAILABLE:
         return {}
     
@@ -234,41 +233,11 @@ def load_accounts():
     
     return accounts
 
-
-def parse_storage_usage(usage_str):
-    if not usage_str or usage_str == '-' or 'Error' in usage_str or 'failed' in usage_str:
-        return None
-    
-    try:
-        if '(' in usage_str and '%' in usage_str:
-            percentage_str = usage_str.split('(')[1].split('%')[0]
-            return float(percentage_str)
-    except:
-        pass
-    
-    return None
-
-
-def get_storage_color(percentage):
-    if percentage is None:
-        return "white"
-    elif percentage < 50:
-        return "green"
-    elif percentage < 80:
-        return "yellow"
-    else:
-        return "red"
-
-
 def get_dashboard_stats(accounts):
     stats = {
         'total_accounts': len(accounts),
         'tagged_accounts': 0,
-        'total_storage_gb': 0,
-        'used_storage_gb': 0,
         'purposes': defaultdict(int),
-        'storage_issues': 0,
-        'high_usage': 0,
     }
     
     for account in accounts:
@@ -276,60 +245,15 @@ def get_dashboard_stats(accounts):
         if purpose != '-':
             stats['tagged_accounts'] += 1
             stats['purposes'][purpose] += 1
-        
-        usage = account.get('Usage', '-').strip()
-        if usage and usage != '-':
-            try:
-                if '/' in usage:
-                    parts = usage.split('/')
-                    total_part = parts[1].split('(')[0].strip()
-                    
-                    # Handle cases with and without space (e.g. "50 GB" or "50GB")
-                    import re
-                    match = re.match(r'([\d.]+)\s*([KMGT]?B)', total_part)
-                    if match:
-                        total_value = float(match.group(1))
-                        total_unit = match.group(2)
-                        
-                        if total_unit == 'TB':
-                            total_gb = total_value * 1024
-                        elif total_unit == 'GB':
-                            total_gb = total_value
-                        elif total_unit == 'MB':
-                            total_gb = total_value / 1024
-                        elif total_unit == 'KB':
-                            total_gb = total_value / (1024 * 1024)
-                        else:
-                            total_gb = 0
-                    else:
-                        total_gb = 0
-                    
-                    stats['total_storage_gb'] += total_gb
-                    
-                    percentage = parse_storage_usage(usage)
-                    if percentage is not None:
-                        used_gb = total_gb * (percentage / 100)
-                        stats['used_storage_gb'] += used_gb
-                        
-                        if percentage > 80:
-                            stats['high_usage'] += 1
-                else:
-                    stats['storage_issues'] += 1
-            except:
-                stats['storage_issues'] += 1
-        else:
-            stats['storage_issues'] += 1
-    
     return stats
 
 
 def display_header():
     title = Text()
-    title.append("MEGA", style="bold cyan")
-    title.append(".nz ", style="bold white")
-    title.append("Account Manager", style="bold magenta")
+    title.append("MEGA.nz Account Manager", style="bold white")
+    title.append(" - hexxed", style="bold purple")
     
-    subtitle = Text("Unified Management Dashboard", style="italic dim")
+    subtitle = Text("spider's dashboard", style="italic dim")
     
     header = Panel(
         Columns([title, subtitle], align="center", expand=True),
@@ -353,35 +277,19 @@ def display_dashboard(accounts):
     account_info.add_row("Tagged Accounts:", str(stats['tagged_accounts']))
     account_info.add_row("Untagged:", str(stats['total_accounts'] - stats['tagged_accounts']))
     
-    storage_info = Table.grid(padding=(0, 2))
-    storage_info.add_column(style="cyan", justify="right")
-    storage_info.add_column(style="bold white")
-    
-    total_storage = f"{stats['total_storage_gb']:.2f} GB"
-    used_storage = f"{stats['used_storage_gb']:.2f} GB"
-    usage_percent = (stats['used_storage_gb'] / stats['total_storage_gb'] * 100) if stats['total_storage_gb'] > 0 else 0
-    
-    storage_color = get_storage_color(usage_percent)
-    
-    storage_info.add_row("Total Storage:", total_storage)
-    storage_info.add_row("Used Storage:", f"[{storage_color}]{used_storage}[/{storage_color}]")
-    storage_info.add_row("Usage:", f"[{storage_color}]{usage_percent:.1f}%[/{storage_color}]")
-    storage_info.add_row("High Usage (>80%):", f"[{'red' if stats['high_usage'] > 0 else 'green'}]{stats['high_usage']}[/]")
-    
     purpose_info = Table.grid(padding=(0, 2))
     purpose_info.add_column(style="cyan", justify="right")
     purpose_info.add_column(style="bold white")
     
     if stats['purposes']:
         sorted_purposes = sorted(stats['purposes'].items(), key=lambda x: x[1], reverse=True)
-        for purpose, count in sorted_purposes[:5]:  # Show top 5
+        for purpose, count in sorted_purposes[:5]:
             purpose_info.add_row(f"{purpose}:", str(count))
     else:
         purpose_info.add_row("No tags yet", "")
     
     panels = [
         Panel(account_info, title="[bold]📊 Accounts[/bold]", border_style="blue", box=box.ROUNDED),
-        Panel(storage_info, title="[bold]💾 Storage[/bold]", border_style="green", box=box.ROUNDED),
         Panel(purpose_info, title="[bold]🏷️  Top Purposes[/bold]", border_style="magenta", box=box.ROUNDED),
     ]
     
@@ -397,15 +305,12 @@ def display_menu():
     
     menu.add_row("1.", "Generate New Accounts", "Create new MEGA accounts")
     menu.add_row("2.", "Sign In to All Accounts", "Keep accounts alive")
-    menu.add_row("3.", "Check Storage Usage", "Update storage statistics")
-    menu.add_row("4.", "Manage Tags/Purposes", "Organize accounts")
-    menu.add_row("5.", "Select Account", "Copy credentials to clipboard")
-    menu.add_row("6.", "Setup Auto-Login Scheduler", "Configure weekly signin")
-    menu.add_row("7.", "View All Accounts", "List accounts with details")
-    menu.add_row("8.", "Upload Folder", "Upload local folder to account")
-    menu.add_row("9.", "Browse Files", "Browse and download files")
-    menu.add_row("10.", "Refresh Dashboard", "Reload statistics")
-    menu.add_row("11.", "Encrypted Links", "Store MEGA links securely")
+    menu.add_row("3.", "Manage Tags/Purposes", "Organize accounts")
+    menu.add_row("4.", "Select Account", "Copy credentials to clipboard")
+    menu.add_row("5.", "Setup Auto-Login Scheduler", "Configure weekly signin")
+    menu.add_row("6.", "View All Accounts", "List accounts with logins")
+    menu.add_row("7.", "Upload Folder", "Upload local folder to account")
+    menu.add_row("8.", "Encrypted Links", "Store MEGA links securely")
     menu.add_row("0.", "Exit", "Close manager")
     
     console.print(Panel(menu, title="[bold]Main Menu[/bold]", border_style="yellow", box=box.ROUNDED))
@@ -442,33 +347,16 @@ def view_all_accounts(accounts):
     table = Table(title="All Accounts", box=box.ROUNDED, show_lines=True)
     table.add_column("#", style="dim", width=4, justify="right")
     table.add_column("Email", style="cyan")
-    table.add_column("Purpose", style="magenta")
-    table.add_column("Storage Usage", justify="right")
-    table.add_column("Status", justify="center")
+    table.add_column("Password", style="cyan")
     
     for idx, account in enumerate(accounts, start=1):
         email = account.get('Email', '').strip()
-        purpose = account.get('Purpose', '-').strip() or '-'
-        usage = account.get('Usage', '-').strip() or '-'
-        
-        if usage == '-':
-            status = "[dim]❓ Unknown[/dim]"
-            usage_display = "-"
-        elif 'Error' in usage or 'failed' in usage:
-            status = "[red]✗ Error[/red]"
-            usage_display = f"[red]{usage}[/red]"
-        else:
-            percentage = parse_storage_usage(usage)
-            color = get_storage_color(percentage)
-            status = f"[green]✓ Active[/green]"
-            usage_display = f"[{color}]{usage}[/{color}]"
+        password = account.get('MEGA Password', '').strip()
         
         table.add_row(
             str(idx),
             email,
-            purpose,
-            usage_display,
-            status
+            password,
         )
     
     console.print()
@@ -516,15 +404,12 @@ def main():
                 run_script("signin_accounts.py")
                 
             elif choice == "3":
-                run_script("check_storage.py")
-                
-            elif choice == "4":
                 run_script("manage_tags.py")
                 
-            elif choice == "5":
+            elif choice == "4":
                 run_script("account_selector.py")
                 
-            elif choice == "6":
+            elif choice == "5":
                 console.print("\n[bold]Setup Auto-Login Scheduler[/bold]")
                 action = Prompt.ask("Install or remove scheduler?", 
                                    choices=["install", "remove"], default="install")
@@ -534,19 +419,13 @@ def main():
                 else:
                     run_script("setup_scheduler.py")
                 
-            elif choice == "7":
+            elif choice == "6":
                 view_all_accounts(accounts)
                 
-            elif choice == "8":
+            elif choice == "7":
                 run_script("upload_folder.py")
-                
-            elif choice == "9":
-                run_script("browse_files.py")
-                
-            elif choice == "10":
-                continue
             
-            elif choice == "11":
+            elif choice == "8":
                 manage_encrypted_links()
                 
             elif choice == "0":

@@ -48,14 +48,12 @@ def display_accounts_table(accounts):
         table.add_column("#", style="dim", width=4, justify="right")
         table.add_column("Email", style="cyan")
         table.add_column("Purpose", style="magenta")
-        table.add_column("Storage Usage", justify="right")
         
         for idx, account in enumerate(accounts, start=1):
             email = account.get('Email', '').strip()
             purpose = account.get('Purpose', '-').strip() or '-'
-            usage = account.get('Usage', '-').strip() or '-'
             
-            table.add_row(str(idx), email, purpose, usage)
+            table.add_row(str(idx), email, purpose)
         
         console.print()
         console.print(table)
@@ -67,8 +65,7 @@ def display_accounts_table(accounts):
         for idx, account in enumerate(accounts, start=1):
             email = account.get('Email', '').strip()
             purpose = account.get('Purpose', '-').strip() or '-'
-            usage = account.get('Usage', '-').strip() or '-'
-            print(f"{idx:3}. {email:35} | Purpose: {purpose:15} | Usage: {usage}")
+            print(f"{idx:3}. {email:35} | Purpose: {purpose:15}")
         print("="*70 + "\n")
 
 

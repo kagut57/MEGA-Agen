@@ -4,7 +4,7 @@ from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
-SECRET_SALT = b'mega_links_encryption_salt_2025_v1'
+SECRET_SALT = b'mega_links_encryption_salt_2025_v1' # change this if u want to
 
 ENCRYPTED_FILE = 'mega_links.encrypted'
 
@@ -159,7 +159,6 @@ def interactive_mode():
 if __name__ == '__main__':
     import sys
     
-    # Check if cryptography is installed
     try:
         from cryptography.fernet import Fernet
     except ImportError:
@@ -167,5 +166,4 @@ if __name__ == '__main__':
         print("Install with: pip install cryptography")
         sys.exit(1)
     
-    # Run interactive mode
     interactive_mode()

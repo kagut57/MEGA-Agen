@@ -1,4 +1,3 @@
-megaenv
 *.csv
 __pycache__
 mega_links.encrypted

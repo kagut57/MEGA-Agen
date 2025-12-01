@@ -17,8 +17,11 @@ def load_accounts():
 
 def save_accounts(accounts):
     csv_file = 'accounts.csv'
-    with open(csv_file, 'w', newline='', encoding='utf-8') as f:
+    if accounts:
+        fieldnames = list(accounts[0].keys())
+    else:
         fieldnames = ['Email', 'MEGA Password', 'Usage', 'Mail.tm Password', 'Mail.tm ID', 'Purpose']
+    with open(csv_file, 'w', newline='', encoding='utf-8') as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(accounts)
@@ -35,10 +38,9 @@ def list_accounts(accounts, show_purpose=True):
     for idx, account in enumerate(accounts, start=1):
         username = account['Email'].split('@')[0]
         purpose = account.get('Purpose', '-').strip() or '-'
-        usage = account.get('Usage', '-').strip() or '-'
         
         if show_purpose:
-            print(f"{idx:3}. {username:30} | Purpose: {purpose:15} | Usage: {usage}")
+            print(f"{idx:3}. {username:30} | Purpose: {purpose:15}")
         else:
             print(f"{idx:3}. {username}")
     
@@ -81,7 +83,7 @@ def tag_account(accounts):
     except (ValueError, IndexError) as e:
         print(f"Invalid input: {e}")
     except KeyboardInterrupt:
-        print("\n\nCancelled.")
+        pass
 
 def clear_tags(accounts):
     list_accounts(accounts, show_purpose=True)
@@ -117,7 +119,7 @@ def clear_tags(accounts):
     except (ValueError, IndexError) as e:
         print(f"Invalid input: {e}")
     except KeyboardInterrupt:
-        print("\n\nCancelled.")
+        pass
 
 def filter_by_purpose(accounts):
     purposes = set()
@@ -150,8 +152,7 @@ def filter_by_purpose(accounts):
             
             for idx, account in enumerate(filtered, start=1):
                 username = account['Email'].split('@')[0]
-                usage = account.get('Usage', '-').strip() or '-'
-                print(f"{idx:3}. {username:30} | Usage: {usage}")
+                print(f"{idx:3}. {username:30}")
             
             print(f"{'='*70}\n")
         else:
@@ -186,8 +187,7 @@ def show_by_purpose(accounts):
         
         for account in purpose_accounts:
             username = account['Email'].split('@')[0]
-            usage = account.get('Usage', '-').strip() or '-'
-            print(f"   • {username:30} | Usage: {usage}")
+            print(f"   • {username:30}")
         
         print()
     
@@ -195,10 +195,11 @@ def show_by_purpose(accounts):
 
 def main():
     while True:
+        os.system('cls' if os.name == 'nt' else 'clear')
         accounts = load_accounts()
         if accounts is None:
             return
-        
+
         print("\n" + "="*70)
         print("MEGA ACCOUNT TAG MANAGER")
         print("="*70)
@@ -218,19 +219,21 @@ def main():
                 clear_tags(accounts)
             elif choice == '3':
                 filter_by_purpose(accounts)
+                input()
             elif choice == '4':
                 show_by_purpose(accounts)
+                input()
             elif choice == '5':
                 list_accounts(accounts)
+                input()
             elif choice == '6':
-                print("\nExiting...")
                 break
             else:
                 print("Invalid option!")
+                input("Press enter to retry.")
                 
         except KeyboardInterrupt:
-            print("\n\nExiting...")
-            break
+            return
 
 if __name__ == "__main__":
     main()

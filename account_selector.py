@@ -24,64 +24,71 @@ def main():
     if not accounts:
         print("No accounts found in the CSV file!")
         return
-    
-    print("\n" + "="*70)
-    print("AVAILABLE ACCOUNTS")
-    print("="*70)
-    for idx, account in enumerate(accounts, start=1):
-        username = account['email'].split('@')[0]
-        purpose = account.get('purpose', '-') or '-'
-        usage = account.get('usage', '-') or '-'
-        
-        info = f"{idx:3}. {username:30}"
-        if purpose != '-':
-            info += f" | Purpose: {purpose:15}"
-        if usage != '-':
-            info += f" | Usage: {usage}"
-        
-        print(info)
-    print("="*70)
-    
+
     while True:
-        try:
-            choice = input("\nEnter account number: ").strip()
-            account_num = int(choice)
-            
-            if 1 <= account_num <= len(accounts):
-                selected_account = accounts[account_num - 1]
-                break
-            else:
-                print(f"Please enter a number between 1 and {len(accounts)}")
-        except ValueError:
-            print("Please enter a valid number")
-        except KeyboardInterrupt:
-            print("\n\nClosing...")
-            return
-    
-    while True:
-        try:
-            data_choice = input("\n1 = Email\n2 = Password\n3 = Both (email:password)\nSelect: ").strip()
-            
-            if data_choice == '1':
-                to_copy = selected_account['email']
-                data_type = "Email"
-                break
-            elif data_choice == '2':
-                to_copy = selected_account['password']
-                data_type = "Password"
-                break
-            elif data_choice == '3':
-                to_copy = f"{selected_account['email']}:{selected_account['password']}"
-                data_type = "Both (email:password)"
-                break
-            else:
-                print("Please enter 1, 2, or 3")
-        except KeyboardInterrupt:
-            print("\n\nClosing...")
-            return
-    
-    pyperclip.copy(to_copy)
-    print(f"\n{data_type} copied to clipboard: {to_copy}")
+        os.system('cls' if os.name == 'nt' else 'clear')
+        print("\n" + "="*70)
+        print("AVAILABLE ACCOUNTS")
+        print("="*70)
+        for idx, account in enumerate(accounts, start=1):
+            username = account['email'].split('@')[0]
+            purpose = account.get('purpose', '-') or '-'
+            usage = account.get('usage', '-') or '-'
+
+            info = f"{idx:3}. {username:30}"
+            if purpose != '-':
+                info += f" | Purpose: {purpose:15}"
+            if usage != '-':
+                info += f" | Usage: {usage}"
+
+            print(info)
+        print("="*70)
+        while True:
+            try:
+                choice = input("\nEnter account number (or 'enter' to return to menu): ").strip()
+                account_num = int(choice)
+
+                if 1 <= account_num <= len(accounts):
+                    selected_account = accounts[account_num - 1]
+                    break
+                else:
+                    print(f"Please enter a number between 1 and {len(accounts)}")
+            except ValueError:
+                return
+            except KeyboardInterrupt:
+                print("\n\nClosing...")
+                return
+
+        while True:
+            try:
+                data_choice = input("\n1 = Email\n2 = Password\n3 = Both (email:password)\nor, press enter to return to the dashboard\nSelect: ").strip()
+                if data_choice.lower() == '':
+                    # return to menu - dont print cause u aint gonna see it anyway
+                    return
+
+                if data_choice == '1':
+                    to_copy = selected_account['email']
+                    data_type = "Email"
+                    break
+                elif data_choice == '2':
+                    to_copy = selected_account['password']
+                    data_type = "Password"
+                    break
+                elif data_choice == '3':
+                    to_copy = f"{selected_account['email']}:{selected_account['password']}"
+                    data_type = "Both (email:password)"
+                    break
+                else:
+                    print("Please enter 1, 2, or 3")
+            except ValueError:
+                return
+            except KeyboardInterrupt:
+                print("\n\nClosing...")
+                return
+
+        pyperclip.copy(to_copy)
+        print(f"\n{data_type} copied to clipboard: {to_copy}")
+        input("\nPress Enter to continue...")
 
 if __name__ == "__main__":
     main()

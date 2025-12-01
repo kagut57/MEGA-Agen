@@ -51,7 +51,6 @@ def find_url(string):
     return [x[0] for x in url]
 
 def get_random_string(length):
-    """Generate a random string with a given length."""
     letters = string.ascii_lowercase + string.ascii_uppercase + string.digits
     return "".join(random.choice(letters) for _ in range(length))
 
