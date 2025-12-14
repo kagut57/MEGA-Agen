@@ -8,9 +8,9 @@ import string
 import csv
 import threading
 import argparse
-import pymailtm
-from pymailtm.pymailtm import CouldNotGetAccountException, CouldNotGetMessagesException
 from faker import Faker
+from cloudscraper import create_scraper
+
 fake = Faker()
 
 def check_limit(value):
@@ -46,7 +46,7 @@ args = parser.parse_args()
 
 
 def find_url(string):
-    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»“”‘’]))"
+    regex = r"(?i)\b((?:https?://|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:'\".,<>?«»""'']))"
     url = re.findall(regex, string)
     return [x[0] for x in url]
 
@@ -54,47 +54,69 @@ def get_random_string(length):
     letters = string.ascii_lowercase + string.ascii_uppercase + string.digits
     return "".join(random.choice(letters) for _ in range(length))
 
+def get_mail(scraper):
+    """Get a temporary email address from 10minutemail."""
+    email_endpoint = "https://10minutemail.com/session/address"
+    
+    try:
+        email_response = scraper.get(email_endpoint)
+        email_response.raise_for_status()
+        content = email_response.json()
+        return content['address']
+    except Exception as e:
+        print(f"❌ Error fetching email: {e}")
+        return None
+
+def get_message(scraper):
+    """Get messages from the temporary email inbox."""
+    messages_endpoint = "https://10minutemail.com/messages/"
+    
+    try:
+        messages_response = scraper.get(messages_endpoint)
+        messages_response.raise_for_status()
+        messages = messages_response.json()
+        
+        if messages:
+            for message in messages:
+                return message.get('bodyPlainText')
+        return None
+    except Exception as e:
+        print(f"❌ Error fetching messages: {e}")
+        return None
+
 
 class MegaAccount:
     def __init__(self, name, password):
         self.name = name
         self.password = password
+        self.scraper = create_scraper()  # Create scraper instance for this account
 
     def generate_mail(self):
         for i in range(5):
-            try:
-                mail = pymailtm.MailTm()
-                acc = mail.get_account()
-            except CouldNotGetAccountException:
-                print(f"\r> Could not get new Mail.tm account. Retrying ({i+1} of 5)...", end="\n")
+            email = get_mail(self.scraper)
+            if email:
+                self.email = email
+                print(f"\r> [{self.email}]: Got temporary email address", end="\033[K", flush=True)
+                return
+            else:
+                print(f"\r> Could not get new 10minutemail account. Retrying ({i+1} of 5)...", end="\n")
                 sleep_output = ""
-                for i in range(random.randint(8, 15)):
+                for j in range(random.randint(8, 15)):
                     sleep_output += ". "
                     print("\r"+sleep_output, end="\033[K", flush=True)
                     time.sleep(1)
-            else:
-                break
-        else:
-            print("\nCould not get account. You are most likely blocked from Mail.tm.")
-            print("Please wait 5 minutes and try again with a lower number of accounts/threads.")
-            exit()
+        
+        print("\nCould not get account. Please wait and try again with a lower number of accounts/threads.")
+        exit()
 
-        self.email = acc.address
-        self.email_id = acc.id_
-        self.email_password = acc.password
-
-    def get_mail(self):
-        while True:
-            try:
-                mail = pymailtm.Account(self.email_id, self.email, self.email_password)
-                messages = mail.get_messages()
-                break
-            except (CouldNotGetAccountException, CouldNotGetMessagesException):
-                print("> Could not get latest email. Retrying...")
-                time.sleep(random.randint(5, 15))
-        if len(messages) == 0:
-            return None
-        return messages[0]
+    def get_mail_message(self):
+        for attempt in range(10):
+            message = get_message(self.scraper)
+            if message:
+                return message
+            print(f"\r> [{self.email}]: Waiting for email... (attempt {attempt+1}/10)", end="\033[K", flush=True)
+            time.sleep(5)
+        return None
 
     def register(self):
         self.generate_mail()
@@ -125,18 +147,21 @@ class MegaAccount:
     def verify(self):
         confirm_message = None
         for i in range(5):
-            confirm_message = self.get_mail()
-            if confirm_message is not None and "verification required".lower() in confirm_message.subject.lower():
-                confirm_message = self.get_mail()
+            confirm_message = self.get_mail_message()
+            if confirm_message is not None and "verification required".lower() in confirm_message.lower():
                 break
             print(f"\r> [{self.email}]: Waiting for verification email... ({i+1} of 5)", end="\033[K", flush=True)
             time.sleep(5)
 
         if confirm_message is None: 
-            print(f"\r> [{self.email}]: Failed to verify account. There was no verification email. Please open an issue on github.", end="\033[K", flush=True)
-            exit()
+            print(f"\r> [{self.email}]: Failed to verify account. There was no verification email.", end="\033[K", flush=True)
+            return
 
-        links = find_url(confirm_message.text)
+        links = find_url(confirm_message)
+        if not links:
+            print(f"\r> [{self.email}]: Failed to find verification link in email.", end="\033[K", flush=True)
+            return
+            
         self.verify_command = str(self.verify_command).replace("@LINK@", links[0])
 
         verification = subprocess.run(
@@ -147,14 +172,14 @@ class MegaAccount:
             universal_newlines=True,
         )
         if "registered successfully!" in str(verification.stdout):
-            print(f"\r> [{self.email}] Successefully registered and verified.", end="\033[K", flush=True)
+            print(f"\r> [{self.email}] Successfully registered and verified.", end="\033[K", flush=True)
             print(f"\n{self.email} - {self.password}")
 
             with open("accounts.csv", "a", newline='') as csvfile:
                 csvwriter = csv.writer(csvfile)
-                csvwriter.writerow([self.email, self.password, "-", self.email_password, self.email_id, "-"])
+                csvwriter.writerow([self.email, self.password, "-", "10minutemail", "-", "-"])
         else:
-            print("Failed to verify account. Please open an issue on github.")
+            print(f"\r> [{self.email}]: Failed to verify account.", end="\033[K", flush=True)
 
 
 def new_account():
@@ -172,11 +197,16 @@ if __name__ == "__main__":
     if not os.path.exists("accounts.csv"):
         with open("accounts.csv", "w") as csvfile:
             csvwriter = csv.writer(csvfile)
-            csvwriter.writerow(["Email", "MEGA Password", "Usage", "Mail.tm Password", "Mail.tm ID", "Purpose"])
+            csvwriter.writerow(["Email", "MEGA Password", "Usage", "Email Service", "Email ID", "Purpose"])
     with open("accounts.csv") as csvfile:
         csvreader = csv.reader(csvfile)
-        if next(csvreader) != ["Email", "MEGA Password", "Usage", "Mail.tm Password", "Mail.tm ID", "Purpose"]:
-            print("CSV file is not in the correct format. Please use the convert_csv.py script to convert it.")
+        header = next(csvreader)
+        # Accept both old and new header formats
+        if header not in [
+            ["Email", "MEGA Password", "Usage", "Mail.tm Password", "Mail.tm ID", "Purpose"],
+            ["Email", "MEGA Password", "Usage", "Email Service", "Email ID", "Purpose"]
+        ]:
+            print("CSV file is not in the correct format.")
             exit()
     
     if args.threads:
@@ -186,10 +216,11 @@ if __name__ == "__main__":
             t = threading.Thread(target=new_account)
             threads.append(t)
             t.start()
+            # Add slight delay between thread starts to avoid overwhelming the service
+            time.sleep(1)
         for t in threads:
             t.join()
     else:
         print(f"Generating {args.number} accounts.")
         for _ in range(args.number):
             new_account()
-
