@@ -4,3 +4,4 @@ pymailtm
 rich
 pyperclip
 cryptography
+cloudscraper
